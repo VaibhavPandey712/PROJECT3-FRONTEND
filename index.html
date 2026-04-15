@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="en" class="h-full">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Caption Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0f172a;
+      --accent: #06b6d4;
+      --accent-dark: #0891b2;
+      --surface: #f8fafc;
+      --surface-dark: #1e293b;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --border: #e2e8f0;
+    }
+
+    body {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+      background: var(--surface);
+      color: var(--text-primary);
+    }
+
+    html,
+    body,
+    #app {
+      height: 100%;
+      width: 100%;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Typography */
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: 1.875rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    p {
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    /* Animations */
+    .fade-in {
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .scale-in {
+      animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.98);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* Spinner */
+    .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Toast */
+    .toast {
+      animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(12px);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Inputs */
+    .input-field {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+      font-size: 0.95rem;
+    }
+
+    .input-field::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.95rem;
+      letter-spacing: 0.3px;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 16px rgba(6, 182, 212, 0.25);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text-primary);
+      font-weight: 500;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.95rem;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--surface);
+      border-color: var(--text-secondary);
+    }
+
+    .btn-secondary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #e2e8f0 100%);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    /* Drag & Drop */
+    .drag-over {
+      border-color: var(--accent) !important;
+      background: rgba(6, 182, 212, 0.05) !important;
+    }
+
+    /* Navigation */
+    #navbar {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+
+    .nav-link {
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: color 0.2s ease;
+      position: relative;
+    }
+
+    .nav-link:hover {
+      color: var(--accent);
+    }
+
+    .nav-link.active {
+      color: var(--accent);
+    }
+
+    .nav-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent);
+      border-radius: 1px;
+    }
+
+    /* Cards */
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+  </style>
+  <style>
+    @view-transition {
+      navigation: auto;
+    }
+  </style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+</head>
+
+<body class="h-full bg-gradient-to-br from-slate-50 to-slate-100">
+  <div id="app" class="h-full w-full flex flex-col overflow-auto"><!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div><!-- Navigation -->
+    <nav id="navbar" class="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-40">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+          <div class="flex items-center gap-3 cursor-pointer" onclick="navigateTo('home')">
+            <div class="w-10 h-10 gradient-primary rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z">
+                </path>
+              </svg>
+            </div><span class="text-xl font-bold gradient-text">CaptionAI</span>
+          </div>
+          <div id="nav-links" class="flex items-center gap-8"></div>
+        </div>
+      </div>
+    </nav><!-- Main Content -->
+    <main id="main-content" class="flex-1"></main><!-- Footer -->
+    <footer class="bg-white/50 backdrop-blur-sm border-t border-gray-100 py-6 mt-auto">
+      <div class="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
+        <p>© 2024 CaptionAI. Powered by advanced AI technology.</p>
+      </div>
+    </footer>
+  </div>
+  <script>
+    // ==================== Configuration ====================
+    const API_BASE_URL = 'https://project-03-bifa.onrender.com/api';
+
+    // ==================== State Management ====================
+    const state = {
+      currentPage: 'home',
+      isAuthenticated: false,
+      user: null,
+      posts: [],
+      isLoading: false
+    };
+
+    // ==================== Auth State Management ====================
+    // Backend handles JWT via HttpOnly cookies - Frontend ONLY manages UI state
+
+    async function initAuth() {
+      // Check if user is authenticated by attempting to fetch protected resource
+      try {
+        const response = await fetch(`${API_BASE_URL}/post/mypost`, {
+          method: 'GET',
+          credentials: 'include'  // REQUIRED: Include cookies in request
+        });
+
+        if (response.ok) {
+          // User is authenticated, try to get username from session storage
+          const username = sessionStorage.getItem('username');
+          if (username) {
+            state.isAuthenticated = true;
+            state.user = { username };
+          }
+        }
+      } catch (error) {
+        // Not authenticated or error - stay logged out
+        state.isAuthenticated = false;
+      }
+    }
+
+    function setAuth(username) {
+      // Backend already set the HttpOnly cookie during login
+      // Frontend just updates UI state
+      state.isAuthenticated = true;
+      state.user = { username };
+      sessionStorage.setItem('username', username);
+    }
+
+    function logout() {
+      state.isAuthenticated = false;
+      state.user = null;
+      state.posts = [];
+      sessionStorage.removeItem('username');
+      updateNavigation();
+      navigateTo('home');
+      showToast('Logged out successfully', 'success');
+    }
+
+    // ==================== Toast Notifications ====================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+
+      const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500',
+        warning: 'bg-yellow-500'
+      };
+
+      const icons = {
+        success: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>',
+        error: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>',
+        info: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+        warning: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>'
+      };
+
+      toast.className = `toast ${colors[type]} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[320px]`;
+      toast.innerHTML = `
+        ${icons[type]}
+        <span class="flex-1 text-sm font-medium">${message}</span>
+        <button onclick="this.parentElement.remove()" class="hover:bg-white/20 rounded p-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      `;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.style.animation = 'toastSlide 0.3s ease-out reverse';
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, 4000);
+    }
+
+    // ==================== API Service ====================
+    // IMPORTANT: All requests include credentials: "include" for cookie auth
+
+    async function apiCall(endpoint, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+      };
+
+      try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...options,
+          headers,
+          credentials: 'include'  // REQUIRED: Include cookies
+        });
+
+        // Check for 401 Unauthorized - redirect to login
+        if (response.status === 401) {
+          state.isAuthenticated = false;
+          sessionStorage.removeItem('username');
+          navigateTo('login');
+          showToast('Session expired. Please login again.', 'warning');
+          throw new Error('Unauthorized');
+        }
+
+        return response;
+      } catch (error) {
+        throw new Error('Network error. Please check your connection.');
+      }
+    }
+
+    async function uploadImage(formData) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/post`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'  // REQUIRED: Include cookies
+        });
+
+        // Check for 401 Unauthorized
+        if (response.status === 401) {
+          state.isAuthenticated = false;
+          sessionStorage.removeItem('username');
+          navigateTo('login');
+          showToast('Session expired. Please login again.', 'warning');
+          throw new Error('Unauthorized');
+        }
+
+        return response;
+      } catch (error) {
+        throw new Error('Network error uploading image');
+      }
+    }
+
+    async function loginUser(username, password) {
+      const response = await apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Backend automatically set HttpOnly cookie
+      // Frontend just stores username for UI
+      return { username };
+    }
+
+    async function registerUser(username, password) {
+      const response = await apiCall('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      return data;
+    }
+
+    async function fetchMyPosts() {
+      const response = await apiCall('/post/mypost', {
+        method: 'GET'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch posts');
+      }
+
+      return Array.isArray(data) ? data : [];
+    }
+
+    // ==================== Navigation ====================
+    function navigateTo(page) {
+      if (['upload', 'myposts'].includes(page) && !state.isAuthenticated) {
+        showToast('Please login to access this page', 'warning');
+        navigateTo('login');
+        return;
+      }
+
+      state.currentPage = page;
+      renderPage();
+      updateNavigation();
+      document.getElementById('main-content').scrollTo(0, 0);
+    }
+
+    function updateNavigation() {
+      const navLinks = document.getElementById('nav-links');
+
+      if (state.isAuthenticated) {
+        navLinks.innerHTML = `
+          <a href="#" onclick="navigateTo('upload'); return false;" class="nav-link ${state.currentPage === 'upload' ? 'active' : ''}">Upload</a>
+          <a href="#" onclick="navigateTo('myposts'); return false;" class="nav-link ${state.currentPage === 'myposts' ? 'active' : ''}">My Posts</a>
+          <div class="flex items-center gap-4 pl-4 border-l border-gray-200">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 gradient-primary rounded-full flex items-center justify-center text-white text-sm font-bold">
+                ${state.user.username.charAt(0).toUpperCase()}
+              </div>
+              <span class="text-sm font-medium text-gray-700">${state.user.username}</span>
+            </div>
+            <button onclick="logout()" class="text-gray-500 hover:text-red-500 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              </svg>
+            </button>
+          </div>
+        `;
+      } else {
+        navLinks.innerHTML = `
+          <a href="#" onclick="navigateTo('login'); return false;" class="nav-link ${state.currentPage === 'login' ? 'active' : ''}">Login</a>
+          <button onclick="navigateTo('register')" class="btn-primary px-6 py-2 rounded-lg text-sm">
+            Sign Up
+          </button>
+        `;
+      }
+    }
+
+    // ==================== Page Renderers ====================
+    function renderPage() {
+      const main = document.getElementById('main-content');
+
+      switch (state.currentPage) {
+        case 'home':
+          main.innerHTML = renderHomePage();
+          break;
+        case 'login':
+          main.innerHTML = renderLoginPage();
+          break;
+        case 'register':
+          main.innerHTML = renderRegisterPage();
+          break;
+        case 'upload':
+          main.innerHTML = renderUploadPage();
+          break;
+        case 'myposts':
+          main.innerHTML = renderMyPostsPage();
+          loadMyPosts();
+          break;
+        default:
+          main.innerHTML = renderHomePage();
+      }
+    }
+
+    function renderHomePage() {
+      if (state.isAuthenticated) {
+        // LOGGED IN: Creative, inspiring dashboard
+        return `
+          <div class="fade-in h-full flex flex-col">
+            <section class="flex-1 flex items-center justify-center py-20">
+              <div class="max-w-5xl mx-auto px-6 sm:px-8 w-full">
+                <!-- Welcome Header -->
+                <div class="mb-16">
+                  <div class="inline-flex items-center gap-2 bg-blue-50 rounded-full px-4 py-2 mb-6 border border-blue-100">
+                    <span class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                    <span class="text-sm text-blue-700 font-medium">Welcome back, ${state.user.username}!</span>
+                  </div>
+                  
+                  <h1 class="mb-4">Ready to create magic?</h1>
+                  <p class="text-lg text-var(--text-secondary) max-w-2xl">
+                    Upload your images and watch our AI craft captions that truly capture the moment. Your audience will feel the difference.
+                  </p>
+                </div>
+
+                <!-- Quick Action Cards -->
+                <div class="grid md:grid-cols-2 gap-6 mb-16">
+                  <!-- Upload Card -->
+                  <div class="card p-8 hover:border-var(--accent) cursor-pointer transition-all" onclick="navigateTo('upload')">
+                    <div class="flex items-start justify-between mb-6">
+                      <div>
+                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent), #0891b2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+                          </svg>
+                        </div>
+                        <h3 class="font-semibold text-lg mb-2">Upload & Generate</h3>
+                        <p class="text-sm text-var(--text-secondary)">Pick an image and let AI do the work</p>
+                      </div>
+                      <svg class="w-6 h-6 text-var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <!-- View Posts Card -->
+                  <div class="card p-8 hover:border-var(--accent) cursor-pointer transition-all" onclick="navigateTo('myposts')">
+                    <div class="flex items-start justify-between mb-6">
+                      <div>
+                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"></path>
+                          </svg>
+                        </div>
+                        <h3 class="font-semibold text-lg mb-2">View My Posts</h3>
+                        <p class="text-sm text-var(--text-secondary)">Explore all your generated captions</p>
+                      </div>
+                      <svg class="w-6 h-6 text-var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Features Grid -->
+                <div class="pt-12 border-t border-var(--border)">
+                  <p class="text-sm text-var(--text-secondary) font-medium uppercase tracking-wide mb-8">Why creators love CaptionAI</p>
+                  
+                  <div class="grid sm:grid-cols-3 gap-8">
+                    <div>
+                      <div style="width: 40px; height: 40px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                      </div>
+                      <h4 class="font-semibold mb-2">Lightning Fast</h4>
+                      <p class="text-sm text-var(--text-secondary)">Captions in milliseconds</p>
+                    </div>
+
+                    <div>
+                      <div style="width: 40px; height: 40px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5.657 5.657l-.707.707M5.05 5.05l.707.707m5.657-5.657l.707-.707"></path>
+                        </svg>
+                      </div>
+                      <h4 class="font-semibold mb-2">Context Aware</h4>
+                      <p class="text-sm text-var(--text-secondary)">Smart AI understands your content</p>
+                    </div>
+
+                    <div>
+                      <div style="width: 40px; height: 40px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
+                      </div>
+                      <h4 class="font-semibold mb-2">Easy Sharing</h4>
+                      <p class="text-sm text-var(--text-secondary)">Copy and share anywhere</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        `;
+      } else {
+        // NOT LOGGED IN: Original landing page
+        return `
+          <div class="fade-in h-full flex flex-col">
+            <section class="flex-1 flex items-center justify-center py-20">
+              <div class="max-w-5xl mx-auto px-6 sm:px-8 w-full">
+                <div class="mb-16">
+                  <p class="text-sm font-medium text-var(--accent) tracking-wide mb-4 uppercase">
+                    AI-Powered Caption Generation
+                  </p>
+                  <h1 class="mb-6">Create captions that convert</h1>
+                  <p class="text-lg text-var(--text-secondary) max-w-2xl mb-12">
+                    Let our advanced AI analyze your images and generate thoughtful, engaging captions in seconds. No templates, no nonsense.
+                  </p>
+                  
+                  <div class="flex flex-col sm:flex-row gap-4 w-fit">
+                    <button onclick="navigateTo('register')" class="btn-primary px-6 py-3 rounded-lg font-medium">
+                      Start Free
+                    </button>
+                    <button onclick="navigateTo('login')" class="btn-secondary px-6 py-3 rounded-lg font-medium">
+                      Sign In
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid sm:grid-cols-3 gap-8 pt-16 border-t border-var(--border)">
+                  <div>
+                    <div class="flex items-center gap-3 mb-4">
+                      <div style="width: 40px; height: 40px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                      </div>
+                      <h3 class="font-semibold">Instant Results</h3>
+                    </div>
+                    <p class="text-sm text-var(--text-secondary)">Get captions in milliseconds, not hours</p>
+                  </div>
+
+                  <div>
+                    <div class="flex items-center gap-3 mb-4">
+                      <div style="width: 40px; height: 40px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 1112 2.944a11.954 11.954 0 018.618 3.04A11.964 11.964 0 1112 2.944z"></path>
+                        </svg>
+                      </div>
+                      <h3 class="font-semibold">Quality First</h3>
+                    </div>
+                    <p class="text-sm text-var(--text-secondary)">Context-aware, relevant captions every time</p>
+                  </div>
+
+                  <div>
+                    <div class="flex items-center gap-3 mb-4">
+                      <div style="width: 40px; height: 40px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
+                      </div>
+                      <h3 class="font-semibold">Copy & Share</h3>
+                    </div>
+                    <p class="text-sm text-var(--text-secondary)">One-click copy and ready for anywhere</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        `;
+      }
+    }
+
+    function renderLoginPage() {
+      return `
+        <div class="min-h-[calc(100%-140px)] flex items-center justify-center py-12 px-4 fade-in">
+          <div class="w-full max-w-md">
+            <div class="card p-8 sm:p-10">
+              <div class="mb-8">
+                <h2 class="mb-2">Welcome back</h2>
+                <p class="text-sm text-var(--text-secondary)">Sign in to your account to continue</p>
+              </div>
+
+              <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                  <label for="login-username" class="block text-sm font-medium text-var(--text-primary) mb-2">Username</label>
+                  <input
+                    type="text"
+                    id="login-username"
+                    name="username"
+                    required
+                    class="w-full px-4 py-2.5 input-field rounded-lg"
+                    placeholder="Enter your username"
+                  >
+                </div>
+
+                <div>
+                  <label for="login-password" class="block text-sm font-medium text-var(--text-primary) mb-2">Password</label>
+                  <input
+                    type="password"
+                    id="login-password"
+                    name="password"
+                    required
+                    class="w-full px-4 py-2.5 input-field rounded-lg"
+                    placeholder="Enter your password"
+                  >
+                </div>
+
+                <div id="login-error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200"></div>
+
+                <button
+                  type="submit"
+                  id="login-btn"
+                  class="w-full btn-primary py-2.5 rounded-lg flex items-center justify-center gap-2 mt-6"
+                >
+                  <span>Sign In</span>
+                </button>
+              </form>
+
+              <p class="text-center text-sm text-var(--text-secondary) mt-6">
+                Don't have an account?
+                <a href="#" onclick="navigateTo('register'); return false;" class="text-var(--accent) font-medium hover:underline">Create one</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRegisterPage() {
+      return `
+        <div class="min-h-[calc(100%-140px)] flex items-center justify-center py-12 px-4 fade-in">
+          <div class="w-full max-w-md">
+            <div class="card p-8 sm:p-10">
+              <div class="mb-8">
+                <h2 class="mb-2">Create account</h2>
+                <p class="text-sm text-var(--text-secondary)">Join us and start generating captions</p>
+              </div>
+
+              <form id="register-form" onsubmit="handleRegister(event)" class="space-y-5">
+                <div>
+                  <label for="register-username" class="block text-sm font-medium text-var(--text-primary) mb-2">Username</label>
+                  <input
+                    type="text"
+                    id="register-username"
+                    name="username"
+                    required
+                    minlength="3"
+                    class="w-full px-4 py-2.5 input-field rounded-lg"
+                    placeholder="Choose a username"
+                  >
+                  <p class="text-xs text-var(--text-secondary) mt-1">Min 3 characters</p>
+                </div>
+
+                <div>
+                  <label for="register-password" class="block text-sm font-medium text-var(--text-primary) mb-2">Password</label>
+                  <input
+                    type="password"
+                    id="register-password"
+                    name="password"
+                    required
+                    minlength="6"
+                    class="w-full px-4 py-2.5 input-field rounded-lg"
+                    placeholder="Create a password"
+                  >
+                  <p class="text-xs text-var(--text-secondary) mt-1">Min 6 characters</p>
+                </div>
+
+                <div>
+                  <label for="register-confirm" class="block text-sm font-medium text-var(--text-primary) mb-2">Confirm Password</label>
+                  <input
+                    type="password"
+                    id="register-confirm"
+                    name="confirm"
+                    required
+                    class="w-full px-4 py-2.5 input-field rounded-lg"
+                    placeholder="Confirm your password"
+                  >
+                </div>
+
+                <div id="register-error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200"></div>
+
+                <button
+                  type="submit"
+                  id="register-btn"
+                  class="w-full btn-primary py-2.5 rounded-lg flex items-center justify-center gap-2 mt-6"
+                >
+                  <span>Create Account</span>
+                </button>
+              </form>
+
+              <p class="text-center text-sm text-var(--text-secondary) mt-6">
+                Already have an account?
+                <a href="#" onclick="navigateTo('login'); return false;" class="text-var(--accent) font-medium hover:underline">Sign in</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderUploadPage() {
+      return `
+        <div class="max-w-4xl mx-auto px-4 py-12 fade-in">
+          <div class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">Generate Captions</h1>
+            <p class="text-gray-600">Upload an image and let our AI create the perfect caption</p>
+          </div>
+
+          <div class="grid lg:grid-cols-2 gap-8">
+            <!-- Upload Area -->
+            <div>
+              <div
+                id="drop-zone"
+                class="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center cursor-pointer transition-all"
+                ondrop="handleDrop(event)"
+                ondragover="handleDragOver(event)"
+                ondragleave="handleDragLeave(event)"
+              >
+                <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Drag and drop your image</h3>
+                <p class="text-gray-600 mb-4">or</p>
+                <label class="btn-primary px-6 py-2 rounded-lg inline-block cursor-pointer">
+                  Browse Files
+                  <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                </label>
+              </div>
+
+              <!-- Image Preview -->
+              <div id="preview-container" class="hidden mt-6">
+                <img id="preview-image" class="w-full rounded-2xl object-cover max-h-96" alt="Preview">
+              </div>
+            </div>
+
+            <!-- Caption Result -->
+            <div>
+              <div class="bg-white rounded-2xl card-shadow p-8 h-full flex flex-col">
+                <h2 class="text-xl font-bold text-gray-900 mb-6">Generated Caption</h2>
+
+                <div id="caption-result" class="flex-1 mb-6">
+                  <div class="text-center text-gray-500 py-12">
+                    <p>Upload an image to generate a caption</p>
+                  </div>
+                </div>
+
+                <div id="caption-actions" class="hidden flex gap-3">
+                  <button
+                    id="copy-btn"
+                    class="flex-1 btn-secondary py-2 rounded-lg flex items-center justify-center gap-2"
+                    onclick="copyCaption()"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    Copy
+                  </button>
+                  <button
+                    id="generate-again-btn"
+                    class="flex-1 btn-primary py-2 rounded-lg"
+                    onclick="document.getElementById('file-input').click()"
+                  >
+                    Generate Again
+                  </button>
+                </div>
+
+                <button
+                  id="generate-btn"
+                  class="w-full btn-primary py-3 rounded-lg hidden"
+                  onclick="generateCaption()"
+                  disabled
+                >
+                  Generate Caption
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMyPostsPage() {
+      return `
+        <div class="max-w-6xl mx-auto px-4 py-12 fade-in">
+          <div class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">My Posts</h1>
+            <p class="text-gray-600">View all your generated captions</p>
+          </div>
+
+          <div id="posts-container" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Loading Skeletons -->
+            ${[1, 2, 3, 4, 5, 6].map(() => `
+              <div class="bg-white rounded-2xl card-shadow overflow-hidden skeleton" style="height: 300px;"></div>
+            `).join('')}
+          </div>
+
+          <div id="empty-state" class="hidden text-center py-16">
+            <div class="w-16 h-16 gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">No posts yet</h3>
+            <p class="text-gray-600 mb-6">Start by uploading an image to generate a caption</p>
+            <button onclick="navigateTo('upload')" class="btn-primary px-6 py-2 rounded-lg">
+              Upload Image
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // ==================== Event Handlers ====================
+    async function handleLogin(e) {
+      e.preventDefault();
+
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errorEl = document.getElementById('login-error');
+      const btn = document.getElementById('login-btn');
+
+      if (!username || !password) {
+        errorEl.textContent = 'Please fill in all fields';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div><span>Signing in...</span>';
+      errorEl.classList.add('hidden');
+
+      try {
+        const result = await loginUser(username, password);
+        setAuth(result.username);
+        showToast('Welcome back, ' + username + '!', 'success');
+        navigateTo('upload');
+      } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Sign In</span>';
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+
+      const username = document.getElementById('register-username').value.trim();
+      const password = document.getElementById('register-password').value;
+      const confirm = document.getElementById('register-confirm').value;
+      const errorEl = document.getElementById('register-error');
+      const btn = document.getElementById('register-btn');
+
+      if (!username || !password || !confirm) {
+        errorEl.textContent = 'Please fill in all fields';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (username.length < 3) {
+        errorEl.textContent = 'Username must be at least 3 characters';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (password.length < 6) {
+        errorEl.textContent = 'Password must be at least 6 characters';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (password !== confirm) {
+        errorEl.textContent = 'Passwords do not match';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div><span>Creating account...</span>';
+      errorEl.classList.add('hidden');
+
+      try {
+        await registerUser(username, password);
+        showToast('Account created! Please sign in.', 'success');
+        navigateTo('login');
+      } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Create Account</span>';
+      }
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('drop-zone').classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('drop-zone').classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('drop-zone').classList.remove('drag-over');
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0 && files[0].type.startsWith('image/')) {
+        displayImagePreview(files[0]);
+      } else {
+        showToast('Please drop a valid image file', 'error');
+      }
+    }
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith('image/')) {
+        displayImagePreview(file);
+      } else {
+        showToast('Please select a valid image file', 'error');
+      }
+    }
+
+    function displayImagePreview(file) {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const preview = document.getElementById('preview-image');
+        preview.src = e.target.result;
+        document.getElementById('preview-container').classList.remove('hidden');
+
+        const generateBtn = document.getElementById('generate-btn');
+        generateBtn.classList.remove('hidden');
+        generateBtn.disabled = false;
+
+        // Store file for upload
+        window.selectedFile = file;
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    async function generateCaption() {
+      if (!window.selectedFile) {
+        showToast('Please select an image first', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('generate-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div><span>Generating...</span>';
+
+      try {
+        const formData = new FormData();
+        formData.append('image', window.selectedFile);
+
+        const response = await uploadImage(formData);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to generate caption');
+        }
+
+        // Extract caption from response - check multiple possible locations
+        let caption = '';
+
+        // Check if caption is in post object
+        if (data.post && data.post.caption) {
+          caption = data.post.caption;
+        }
+        // Check top-level caption field
+        else if (data.caption) {
+          caption = data.caption;
+        }
+        // Check if Caption field exists (different casing)
+        else if (data.Caption) {
+          caption = data.Caption;
+        }
+        // Fallback
+        else {
+          caption = 'No caption generated';
+        }
+
+        displayCaption(caption);
+        showToast('Caption generated successfully!', 'success');
+      } catch (error) {
+        showToast(error.message, 'error');
+        document.getElementById('caption-result').innerHTML = `
+          <div class="text-center text-red-600 py-12">
+            <p>${error.message}</p>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Generate Caption</span>';
+      }
+    }
+
+    function displayCaption(caption) {
+      const resultDiv = document.getElementById('caption-result');
+      resultDiv.innerHTML = `
+        <div class="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-6 border border-purple-100">
+          <p class="text-gray-900 text-lg leading-relaxed">${caption}</p>
+        </div>
+      `;
+
+      document.getElementById('caption-actions').classList.remove('hidden');
+      window.currentCaption = caption;
+    }
+
+    function copyCaption() {
+      if (!window.currentCaption) return;
+
+      navigator.clipboard.writeText(window.currentCaption).then(() => {
+        showToast('Caption copied to clipboard!', 'success');
+      }).catch(() => {
+        showToast('Failed to copy caption', 'error');
+      });
+    }
+
+    function copyPostCaption(index) {
+      // Find the caption text from the data attribute
+      const captionElement = document.querySelector(`p[data-caption="${index}"]`);
+      if (captionElement) {
+        const text = captionElement.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Caption copied to clipboard!', 'success');
+        }).catch(() => {
+          showToast('Failed to copy caption', 'error');
+        });
+      }
+    }
+
+    async function loadMyPosts() {
+      const container = document.getElementById('posts-container');
+      const emptyState = document.getElementById('empty-state');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/post/mypost`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (response.status === 401) {
+          state.isAuthenticated = false;
+          sessionStorage.removeItem('username');
+          navigateTo('login');
+          showToast('Session expired. Please login again.', 'warning');
+          return;
+        }
+
+        const data = await response.json();
+
+        console.log('Raw API response:', data);
+        console.log('Response type:', typeof data);
+        console.log('Is array:', Array.isArray(data));
+
+        // Handle different response formats
+        let posts = [];
+
+        if (Array.isArray(data)) {
+          posts = data;
+        } else if (data && typeof data === 'object') {
+          // Check for nested posts array
+          if (data.posts && Array.isArray(data.posts)) {
+            posts = data.posts;
+          } else if (data.data && Array.isArray(data.data)) {
+            posts = data.data;
+          } else {
+            // Single post or different structure
+            posts = [data];
+          }
+        }
+
+        console.log('Processed posts:', posts);
+        console.log('Posts count:', posts.length);
+
+        if (posts.length === 0) {
+          container.innerHTML = '';
+          emptyState.classList.remove('hidden');
+          return;
+        }
+
+        // Extract captions and images arrays
+        let captionsArray = [];
+        let imagesArray = [];
+
+        if (posts[0] && posts[0].cation && Array.isArray(posts[0].cation)) {
+          captionsArray = posts[0].cation;
+        } else if (posts[0] && posts[0].caption && Array.isArray(posts[0].caption)) {
+          captionsArray = posts[0].caption;
+        }
+
+        if (posts[0] && posts[0].image && Array.isArray(posts[0].image)) {
+          imagesArray = posts[0].image;
+        }
+
+        console.log('Captions array:', captionsArray);
+        console.log('Images array:', imagesArray);
+        console.log('Total captions:', captionsArray.length);
+
+        if (captionsArray.length === 0) {
+          container.innerHTML = '';
+          emptyState.classList.remove('hidden');
+          return;
+        }
+
+        container.innerHTML = captionsArray.map((caption, index) => {
+          // Extract clean image URL - remove "Image N => " prefix if present
+          let imageUrl = imagesArray[index] || '';
+          if (imageUrl.includes(' => ')) {
+            imageUrl = imageUrl.split(' => ')[1]?.trim() || imageUrl;
+          }
+          const cleanCaption = caption.replace(/^Caption \d+ => /, '').trim();
+          const escapedCaption = cleanCaption.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+          return `
+            <div class="bg-white rounded-2xl card-shadow overflow-hidden scale-in flex flex-col h-full" style="animation-delay: ${index * 50}ms">
+              <div class="w-full h-48 bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center overflow-hidden">
+                ${imageUrl ? `
+                  <img 
+                    src="${imageUrl}" 
+                    alt="Caption ${index + 1}" 
+                    loading="lazy"
+                    onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    class="w-full h-full object-cover"
+                  >
+                  <div class="hidden flex-col items-center justify-center w-full h-full text-gray-400">
+                    <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="text-xs">Image unavailable</span>
+                  </div>
+                ` : `
+                  <div class="flex flex-col items-center justify-center text-gray-400">
+                    <svg class="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span class="text-xs">No image</span>
+                  </div>
+                `}
+              </div>
+              <div class="p-6 flex flex-col flex-1">
+                <div class="flex items-start gap-3 mb-3">
+                  <div class="w-8 h-8 gradient-primary rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                    ${index + 1}
+                  </div>
+                  <button onclick="copyPostCaption(${index})" class="ml-auto text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" title="Copy caption">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                  </button>
+                </div>
+                <p class="text-gray-700 text-sm leading-relaxed flex-1" data-caption="${index}">${cleanCaption}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        emptyState.classList.add('hidden');
+      } catch (error) {
+        console.error('Error loading posts:', error);
+        container.innerHTML = `
+          <div class="col-span-full text-center py-12">
+            <p class="text-red-600">${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    // ==================== Initialize App ====================
+    async function initApp() {
+      await initAuth();
+      updateNavigation();
+      renderPage();
+    }
+
+    initApp();
+  </script>
+  <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9c982ee0f1ca548c',t:'MTc3MDM1NTA2Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>
