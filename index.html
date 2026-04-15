@@ -264,8 +264,24 @@
     }
 
     .card:hover {
-      border-color: var(--accent);
       box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    /* FIX: Define missing utility classes used throughout the HTML */
+    .gradient-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .card-shadow {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border);
     }
 
     /* Badge */
@@ -279,13 +295,26 @@
       border-radius: 20px;
       letter-spacing: 0.5px;
     }
+
+    /* FIX: accent color helpers to replace invalid text-var(...) / border-var(...) Tailwind classes */
+    .text-accent {
+      color: var(--accent);
+    }
+
+    .border-accent {
+      border-color: var(--accent);
+    }
+
+    .text-text-secondary {
+      color: var(--text-secondary);
+    }
   </style>
   <style>
     @view-transition {
       navigation: auto;
     }
   </style>
-  
+
 </head>
 
 <body class="h-full bg-gradient-to-br from-slate-50 to-slate-100">
@@ -296,7 +325,7 @@
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center gap-3 cursor-pointer" onclick="navigateTo('home')">
             <div class="w-10 h-10 gradient-primary rounded-lg flex items-center justify-center">
-              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z">
                 </path>
               </svg>
@@ -315,7 +344,8 @@
   </div>
   <script>
     // ==================== Configuration ====================
-    const API_BASE_URL = 'https://project3-backend-mn6l.onrender.com';
+    // FIX: All API calls go through /api/* prefix to match backend routes
+    const API_BASE_URL = 'https://project3-backend-mn6l.onrender.com/api';
 
     // ==================== State Management ====================
     const state = {
@@ -327,39 +357,37 @@
     };
 
     // ==================== Auth State Management ====================
-    // Backend handles JWT via HttpOnly cookies - Frontend ONLY manages UI state
-
     async function initAuth() {
-      // Check if user is authenticated by attempting to fetch protected resource
+      // FIX: Check auth via a protected endpoint; only mark authenticated if response is ok
       try {
         const response = await fetch(`${API_BASE_URL}/post/mypost`, {
           method: 'GET',
-          credentials: 'include'  // REQUIRED: Include cookies in request
+          credentials: 'include'
         });
 
         if (response.ok) {
-          // User is authenticated, try to get username from session storage
           const username = sessionStorage.getItem('username');
           if (username) {
             state.isAuthenticated = true;
             state.user = { username };
           }
+          // If no username in sessionStorage (e.g. page refresh without prior login UI),
+          // treat as not authenticated so user is prompted to log in again.
         }
       } catch (error) {
-        // Not authenticated or error - stay logged out
         state.isAuthenticated = false;
       }
     }
 
     function setAuth(username) {
-      // Backend already set the HttpOnly cookie during login
-      // Frontend just updates UI state
       state.isAuthenticated = true;
       state.user = { username };
       sessionStorage.setItem('username', username);
     }
 
     function logout() {
+      // Call backend logout to clear the HttpOnly cookie
+      fetch(`${API_BASE_URL}/auth/logout`, { credentials: 'include' }).catch(() => { });
       state.isAuthenticated = false;
       state.user = null;
       state.posts = [];
@@ -410,8 +438,6 @@
     }
 
     // ==================== API Service ====================
-    // IMPORTANT: All requests include credentials: "include" for cookie auth
-
     async function apiCall(endpoint, options = {}) {
       const headers = {
         'Content-Type': 'application/json',
@@ -422,10 +448,9 @@
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
           ...options,
           headers,
-          credentials: 'include'  // REQUIRED: Include cookies
+          credentials: 'include'
         });
 
-        // Check for 401 Unauthorized - redirect to login
         if (response.status === 401) {
           state.isAuthenticated = false;
           sessionStorage.removeItem('username');
@@ -436,19 +461,20 @@
 
         return response;
       } catch (error) {
+        if (error.message === 'Unauthorized') throw error;
         throw new Error('Network error. Please check your connection.');
       }
     }
 
+    // FIX: uploadImage now hits the correct /post endpoint (under /api/post via API_BASE_URL)
     async function uploadImage(formData) {
       try {
         const response = await fetch(`${API_BASE_URL}/post`, {
           method: 'POST',
           body: formData,
-          credentials: 'include'  // REQUIRED: Include cookies
+          credentials: 'include'
         });
 
-        // Check for 401 Unauthorized
         if (response.status === 401) {
           state.isAuthenticated = false;
           sessionStorage.removeItem('username');
@@ -459,10 +485,12 @@
 
         return response;
       } catch (error) {
+        if (error.message === 'Unauthorized') throw error;
         throw new Error('Network error uploading image');
       }
     }
 
+    // FIX: loginUser now properly extracts username from the backend response body
     async function loginUser(username, password) {
       const response = await apiCall('/auth/login', {
         method: 'POST',
@@ -471,13 +499,13 @@
 
       const data = await response.json();
 
-      if (!response.ok) {
+      // Backend returns { message, username } on success
+      // It returns 200 even on soft errors, so check for username field
+      if (!data.username) {
         throw new Error(data.message || 'Login failed');
       }
 
-      // Backend automatically set HttpOnly cookie
-      // Frontend just stores username for UI
-      return { username };
+      return { username: data.username };
     }
 
     async function registerUser(username, password) {
@@ -488,25 +516,11 @@
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (response.status === 409 || !data.user) {
         throw new Error(data.message || 'Registration failed');
       }
 
       return data;
-    }
-
-    async function fetchMyPosts() {
-      const response = await apiCall('/post/mypost', {
-        method: 'GET'
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch posts');
-      }
-
-      return Array.isArray(data) ? data : [];
     }
 
     // ==================== Navigation ====================
@@ -582,7 +596,6 @@
 
     function renderHomePage() {
       if (state.isAuthenticated) {
-        // LOGGED IN: Creative, inspiring dashboard
         return `
           <div class="fade-in h-full flex flex-col">
             <section class="flex-1 flex items-center justify-center py-20">
@@ -595,7 +608,7 @@
                   </div>
                   
                   <h1 class="mb-4">Ready to create magic?</h1>
-                  <p class="text-lg text-var(--text-secondary) max-w-2xl">
+                  <p class="text-lg max-w-2xl" style="color: var(--text-secondary);">
                     Upload your images and watch our AI craft captions that truly capture the moment. Your audience will feel the difference.
                   </p>
                 </div>
@@ -603,7 +616,7 @@
                 <!-- Quick Action Cards -->
                 <div class="grid md:grid-cols-2 gap-6 mb-16">
                   <!-- Upload Card -->
-                  <div class="card p-8 hover:border-var(--accent) cursor-pointer transition-all" onclick="navigateTo('upload')">
+                  <div class="card p-8 cursor-pointer transition-all" onclick="navigateTo('upload')" style="cursor:pointer;">
                     <div class="flex items-start justify-between mb-6">
                       <div>
                         <div style="width: 48px; height: 48px; background: linear-gradient(135deg, var(--accent), #0891b2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
@@ -612,16 +625,16 @@
                           </svg>
                         </div>
                         <h3 class="font-semibold text-lg mb-2">Upload & Generate</h3>
-                        <p class="text-sm text-var(--text-secondary)">Pick an image and let AI do the work</p>
+                        <p class="text-sm" style="color: var(--text-secondary);">Pick an image and let AI do the work</p>
                       </div>
-                      <svg class="w-6 h-6 text-var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="w-6 h-6" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                       </svg>
                     </div>
                   </div>
 
                   <!-- View Posts Card -->
-                  <div class="card p-8 hover:border-var(--accent) cursor-pointer transition-all" onclick="navigateTo('myposts')">
+                  <div class="card p-8 cursor-pointer transition-all" onclick="navigateTo('myposts')" style="cursor:pointer;">
                     <div class="flex items-start justify-between mb-6">
                       <div>
                         <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px;">
@@ -630,9 +643,9 @@
                           </svg>
                         </div>
                         <h3 class="font-semibold text-lg mb-2">View My Posts</h3>
-                        <p class="text-sm text-var(--text-secondary)">Explore all your generated captions</p>
+                        <p class="text-sm" style="color: var(--text-secondary);">Explore all your generated captions</p>
                       </div>
-                      <svg class="w-6 h-6 text-var(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg class="w-6 h-6" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                       </svg>
                     </div>
@@ -640,8 +653,8 @@
                 </div>
 
                 <!-- Features Grid -->
-                <div class="pt-12 border-t border-var(--border)">
-                  <p class="text-sm text-var(--text-secondary) font-medium uppercase tracking-wide mb-8">Why creators love CaptionAI</p>
+                <div class="pt-12" style="border-top: 1px solid var(--border);">
+                  <p class="text-sm font-medium uppercase tracking-wide mb-8" style="color: var(--text-secondary);">Why creators love CaptionAI</p>
                   
                   <div class="grid sm:grid-cols-3 gap-8">
                     <div>
@@ -651,7 +664,7 @@
                         </svg>
                       </div>
                       <h4 class="font-semibold mb-2">Lightning Fast</h4>
-                      <p class="text-sm text-var(--text-secondary)">Captions in milliseconds</p>
+                      <p class="text-sm" style="color: var(--text-secondary);">Captions in milliseconds</p>
                     </div>
 
                     <div>
@@ -661,7 +674,7 @@
                         </svg>
                       </div>
                       <h4 class="font-semibold mb-2">Context Aware</h4>
-                      <p class="text-sm text-var(--text-secondary)">Smart AI understands your content</p>
+                      <p class="text-sm" style="color: var(--text-secondary);">Smart AI understands your content</p>
                     </div>
 
                     <div>
@@ -671,7 +684,7 @@
                         </svg>
                       </div>
                       <h4 class="font-semibold mb-2">Easy Sharing</h4>
-                      <p class="text-sm text-var(--text-secondary)">Copy and share anywhere</p>
+                      <p class="text-sm" style="color: var(--text-secondary);">Copy and share anywhere</p>
                     </div>
                   </div>
                 </div>
@@ -680,17 +693,16 @@
           </div>
         `;
       } else {
-        // NOT LOGGED IN: Original landing page
         return `
           <div class="fade-in h-full flex flex-col">
             <section class="flex-1 flex items-center justify-center py-20">
               <div class="max-w-5xl mx-auto px-6 sm:px-8 w-full">
                 <div class="mb-16">
-                  <p class="text-sm font-medium text-var(--accent) tracking-wide mb-4 uppercase">
+                  <p class="text-sm font-medium tracking-wide mb-4 uppercase" style="color: var(--accent);">
                     AI-Powered Caption Generation
                   </p>
                   <h1 class="mb-6">Create captions that convert</h1>
-                  <p class="text-lg text-var(--text-secondary) max-w-2xl mb-12">
+                  <p class="text-lg max-w-2xl mb-12" style="color: var(--text-secondary);">
                     Let our advanced AI analyze your images and generate thoughtful, engaging captions in seconds. No templates, no nonsense.
                   </p>
                   
@@ -704,7 +716,7 @@
                   </div>
                 </div>
 
-                <div class="grid sm:grid-cols-3 gap-8 pt-16 border-t border-var(--border)">
+                <div class="grid sm:grid-cols-3 gap-8 pt-16" style="border-top: 1px solid var(--border);">
                   <div>
                     <div class="flex items-center gap-3 mb-4">
                       <div style="width: 40px; height: 40px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
@@ -714,7 +726,7 @@
                       </div>
                       <h3 class="font-semibold">Instant Results</h3>
                     </div>
-                    <p class="text-sm text-var(--text-secondary)">Get captions in milliseconds, not hours</p>
+                    <p class="text-sm" style="color: var(--text-secondary);">Get captions in milliseconds, not hours</p>
                   </div>
 
                   <div>
@@ -726,7 +738,7 @@
                       </div>
                       <h3 class="font-semibold">Quality First</h3>
                     </div>
-                    <p class="text-sm text-var(--text-secondary)">Context-aware, relevant captions every time</p>
+                    <p class="text-sm" style="color: var(--text-secondary);">Context-aware, relevant captions every time</p>
                   </div>
 
                   <div>
@@ -738,7 +750,7 @@
                       </div>
                       <h3 class="font-semibold">Copy & Share</h3>
                     </div>
-                    <p class="text-sm text-var(--text-secondary)">One-click copy and ready for anywhere</p>
+                    <p class="text-sm" style="color: var(--text-secondary);">One-click copy and ready for anywhere</p>
                   </div>
                 </div>
               </div>
@@ -755,12 +767,12 @@
             <div class="card p-8 sm:p-10">
               <div class="mb-8">
                 <h2 class="mb-2">Welcome back</h2>
-                <p class="text-sm text-var(--text-secondary)">Sign in to your account to continue</p>
+                <p class="text-sm" style="color: var(--text-secondary);">Sign in to your account to continue</p>
               </div>
 
               <form id="login-form" onsubmit="handleLogin(event)" class="space-y-5">
                 <div>
-                  <label for="login-username" class="block text-sm font-medium text-var(--text-primary) mb-2">Username</label>
+                  <label for="login-username" class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Username</label>
                   <input
                     type="text"
                     id="login-username"
@@ -772,7 +784,7 @@
                 </div>
 
                 <div>
-                  <label for="login-password" class="block text-sm font-medium text-var(--text-primary) mb-2">Password</label>
+                  <label for="login-password" class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Password</label>
                   <input
                     type="password"
                     id="login-password"
@@ -794,9 +806,9 @@
                 </button>
               </form>
 
-              <p class="text-center text-sm text-var(--text-secondary) mt-6">
+              <p class="text-center text-sm mt-6" style="color: var(--text-secondary);">
                 Don't have an account?
-                <a href="#" onclick="navigateTo('register'); return false;" class="text-var(--accent) font-medium hover:underline">Create one</a>
+                <a href="#" onclick="navigateTo('register'); return false;" class="font-medium hover:underline" style="color: var(--accent);">Create one</a>
               </p>
             </div>
           </div>
@@ -811,12 +823,12 @@
             <div class="card p-8 sm:p-10">
               <div class="mb-8">
                 <h2 class="mb-2">Create account</h2>
-                <p class="text-sm text-var(--text-secondary)">Join us and start generating captions</p>
+                <p class="text-sm" style="color: var(--text-secondary);">Join us and start generating captions</p>
               </div>
 
               <form id="register-form" onsubmit="handleRegister(event)" class="space-y-5">
                 <div>
-                  <label for="register-username" class="block text-sm font-medium text-var(--text-primary) mb-2">Username</label>
+                  <label for="register-username" class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Username</label>
                   <input
                     type="text"
                     id="register-username"
@@ -826,11 +838,11 @@
                     class="w-full px-4 py-2.5 input-field rounded-lg"
                     placeholder="Choose a username"
                   >
-                  <p class="text-xs text-var(--text-secondary) mt-1">Min 3 characters</p>
+                  <p class="text-xs mt-1" style="color: var(--text-secondary);">Min 3 characters</p>
                 </div>
 
                 <div>
-                  <label for="register-password" class="block text-sm font-medium text-var(--text-primary) mb-2">Password</label>
+                  <label for="register-password" class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Password</label>
                   <input
                     type="password"
                     id="register-password"
@@ -840,11 +852,11 @@
                     class="w-full px-4 py-2.5 input-field rounded-lg"
                     placeholder="Create a password"
                   >
-                  <p class="text-xs text-var(--text-secondary) mt-1">Min 6 characters</p>
+                  <p class="text-xs mt-1" style="color: var(--text-secondary);">Min 6 characters</p>
                 </div>
 
                 <div>
-                  <label for="register-confirm" class="block text-sm font-medium text-var(--text-primary) mb-2">Confirm Password</label>
+                  <label for="register-confirm" class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Confirm Password</label>
                   <input
                     type="password"
                     id="register-confirm"
@@ -866,9 +878,9 @@
                 </button>
               </form>
 
-              <p class="text-center text-sm text-var(--text-secondary) mt-6">
+              <p class="text-center text-sm mt-6" style="color: var(--text-secondary);">
                 Already have an account?
-                <a href="#" onclick="navigateTo('login'); return false;" class="text-var(--accent) font-medium hover:underline">Sign in</a>
+                <a href="#" onclick="navigateTo('login'); return false;" class="font-medium hover:underline" style="color: var(--accent);">Sign in</a>
               </p>
             </div>
           </div>
@@ -944,11 +956,11 @@
 
                 <button
                   id="generate-btn"
-                  class="w-full btn-primary py-3 rounded-lg hidden"
+                  class="w-full btn-primary py-3 rounded-lg hidden flex items-center justify-center gap-2"
                   onclick="generateCaption()"
                   disabled
                 >
-                  Generate Caption
+                  <span>Generate Caption</span>
                 </button>
               </div>
             </div>
@@ -1010,7 +1022,7 @@
       try {
         const result = await loginUser(username, password);
         setAuth(result.username);
-        showToast('Welcome back, ' + username + '!', 'success');
+        showToast('Welcome back, ' + result.username + '!', 'success');
         navigateTo('upload');
       } catch (error) {
         errorEl.textContent = error.message;
@@ -1117,7 +1129,6 @@
         generateBtn.classList.remove('hidden');
         generateBtn.disabled = false;
 
-        // Store file for upload
         window.selectedFile = file;
       };
 
@@ -1145,23 +1156,13 @@
           throw new Error(data.message || 'Failed to generate caption');
         }
 
-        // Extract caption from response - check multiple possible locations
+        // FIX: Backend returns { message, post: { caption, imageUrl, ... } }
         let caption = '';
-
-        // Check if caption is in post object
         if (data.post && data.post.caption) {
           caption = data.post.caption;
-        }
-        // Check top-level caption field
-        else if (data.caption) {
+        } else if (data.caption) {
           caption = data.caption;
-        }
-        // Check if Caption field exists (different casing)
-        else if (data.Caption) {
-          caption = data.Caption;
-        }
-        // Fallback
-        else {
+        } else {
           caption = 'No caption generated';
         }
 
@@ -1203,7 +1204,6 @@
     }
 
     function copyPostCaption(index) {
-      // Find the caption text from the data attribute
       const captionElement = document.querySelector(`p[data-caption="${index}"]`);
       if (captionElement) {
         const text = captionElement.textContent;
@@ -1215,6 +1215,8 @@
       }
     }
 
+    // FIX: loadMyPosts now correctly handles the backend response which is an
+    // array of post objects: [{ _id, caption, imageUrl, user }, ...]
     async function loadMyPosts() {
       const container = document.getElementById('posts-container');
       const emptyState = document.getElementById('empty-state');
@@ -1235,29 +1237,8 @@
 
         const data = await response.json();
 
-        console.log('Raw API response:', data);
-        console.log('Response type:', typeof data);
-        console.log('Is array:', Array.isArray(data));
-
-        // Handle different response formats
-        let posts = [];
-
-        if (Array.isArray(data)) {
-          posts = data;
-        } else if (data && typeof data === 'object') {
-          // Check for nested posts array
-          if (data.posts && Array.isArray(data.posts)) {
-            posts = data.posts;
-          } else if (data.data && Array.isArray(data.data)) {
-            posts = data.data;
-          } else {
-            // Single post or different structure
-            posts = [data];
-          }
-        }
-
-        console.log('Processed posts:', posts);
-        console.log('Posts count:', posts.length);
+        // Backend /post/mypost returns a plain array of post objects
+        const posts = Array.isArray(data) ? data : [];
 
         if (posts.length === 0) {
           container.innerHTML = '';
@@ -1265,38 +1246,12 @@
           return;
         }
 
-        // Extract captions and images arrays
-        let captionsArray = [];
-        let imagesArray = [];
+        emptyState.classList.add('hidden');
 
-        if (posts[0] && posts[0].cation && Array.isArray(posts[0].cation)) {
-          captionsArray = posts[0].cation;
-        } else if (posts[0] && posts[0].caption && Array.isArray(posts[0].caption)) {
-          captionsArray = posts[0].caption;
-        }
-
-        if (posts[0] && posts[0].image && Array.isArray(posts[0].image)) {
-          imagesArray = posts[0].image;
-        }
-
-        console.log('Captions array:', captionsArray);
-        console.log('Images array:', imagesArray);
-        console.log('Total captions:', captionsArray.length);
-
-        if (captionsArray.length === 0) {
-          container.innerHTML = '';
-          emptyState.classList.remove('hidden');
-          return;
-        }
-
-        container.innerHTML = captionsArray.map((caption, index) => {
-          // Extract clean image URL - remove "Image N => " prefix if present
-          let imageUrl = imagesArray[index] || '';
-          if (imageUrl.includes(' => ')) {
-            imageUrl = imageUrl.split(' => ')[1]?.trim() || imageUrl;
-          }
-          const cleanCaption = caption.replace(/^Caption \d+ => /, '').trim();
-          const escapedCaption = cleanCaption.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        container.innerHTML = posts.map((post, index) => {
+          // FIX: backend saves as imageUrl (per post_route.js), use that field
+          const imageUrl = post.imageUrl || post.image || '';
+          const caption = post.caption || 'No caption';
 
           return `
             <div class="bg-white rounded-2xl card-shadow overflow-hidden scale-in flex flex-col h-full" style="animation-delay: ${index * 50}ms">
@@ -1304,7 +1259,7 @@
                 ${imageUrl ? `
                   <img 
                     src="${imageUrl}" 
-                    alt="Caption ${index + 1}" 
+                    alt="Post ${index + 1}" 
                     loading="lazy"
                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                     class="w-full h-full object-cover"
@@ -1335,13 +1290,12 @@
                     </svg>
                   </button>
                 </div>
-                <p class="text-gray-700 text-sm leading-relaxed flex-1" data-caption="${index}">${cleanCaption}</p>
+                <p class="text-gray-700 text-sm leading-relaxed flex-1" data-caption="${index}">${caption}</p>
               </div>
             </div>
           `;
         }).join('');
 
-        emptyState.classList.add('hidden');
       } catch (error) {
         console.error('Error loading posts:', error);
         container.innerHTML = `
@@ -1361,7 +1315,7 @@
 
     initApp();
   </script>
-  
+
 </body>
 
 </html>
