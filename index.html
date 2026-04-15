@@ -343,8 +343,7 @@
     </footer>
   </div>
   <script>
-    // ==================== Configuration ====================
-    // FIX: All API calls go through /api/* prefix to match backend routes
+    
     const API_BASE_URL = 'https://project3-backend-mn6l.onrender.com/api';
 
     // ==================== State Management ====================
@@ -543,7 +542,7 @@
       if (state.isAuthenticated) {
         navLinks.innerHTML = `
           <a href="#" onclick="navigateTo('upload'); return false;" class="nav-link ${state.currentPage === 'upload' ? 'active' : ''}">Upload</a>
-          <a href="#" onclick="navigateTo('myposts'); return false;" class="nav-link ${state.currentPage === 'myposts' ? 'active' : ''}">My Posts</a>
+          <a href=   "#" onclick="navigateTo('myposts'); return false;" class="nav-link ${state.currentPage === 'myposts' ? 'active' : ''}">My Posts</a>
           <div class="flex items-center gap-4 pl-4 border-l border-gray-200">
             <div class="flex items-center gap-2">
               <div class="w-8 h-8 gradient-primary rounded-full flex items-center justify-center text-white text-sm font-bold">
